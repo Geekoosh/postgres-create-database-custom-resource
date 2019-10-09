@@ -1,0 +1,14 @@
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  DBInstance:
+    Properties:
+      AllocatedStorage: 10
+      DBInstanceClass: db.m1.small
+      DBName: !Ref DBName
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      Engine: postgres
+      EngineVersion: 10.7
+      MasterUserPassword: postgres
+      MasterUsername: 12345678
+    Type: AWS::RDS::DBInstance
+  

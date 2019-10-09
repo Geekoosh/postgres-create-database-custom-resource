@@ -1,0 +1,50 @@
+CreateDatabaseLambdaExecutionRole:
+  Type: AWS::IAM::Role
+  Properties:
+    AssumeRolePolicyDocument:
+      Version : "2012-10-17"
+      Statement:
+        - Effect: "Allow"
+          Principal:
+            Service: 
+              - "lambda.amazonaws.com"
+          Action: 
+            - "sts:AssumeRole"
+    Path: "/"
+    Policies:
+      - PolicyName: "LambdaExecutionRolePolicy"
+        PolicyDocument :
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Action:
+                - "logs:CreateLogGroup"
+                - "logs:CreateLogStream"
+                - "logs:PutLogEvents"
+              Resource: "arn:aws:logs:*:*:*"
+            - Effect: "Allow"
+              Action:
+                - "ec2:CreateNetworkInterface"
+                - "ec2:DescribeNetworkInterfaces"
+                - "ec2:DeleteNetworkInterface"
+              Resource:
+                - "*"
+
+CreateDatabaseLambdaSecurityGroup:
+  Type: AWS::EC2::SecurityGroup
+  Properties:
+    GroupDescription: SecurityGroup for Serverless Functions
+    VpcId: !Ref VPC
+
+CreateDatabaseLambda:
+  Type: AWS::Serverless::Function
+  Properties:
+    Runtime: python3.7
+    Handler: index.handler
+    Role: !GetAtt LambdaExecutionRole.Arn
+    Timeout: 50
+    CodeUri: postgres-create-user
+    VpcConfig:
+      SecurityGroupIds:
+        - !Ref ServerlessSecurityGroup
+      SubnetIds: !Ref PrivateSubnets
