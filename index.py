@@ -18,7 +18,7 @@ def simulateCall(event, success):
   }
   if not success:
     data["Reason"] = "Simulated by user"
-  return "curl -X PUT -H 'Content-Type:' --data-binary %s %s" % (json.dumps(data), event["ResponseURL"]) 
+  return "curl -X PUT -H 'Content-Type:' --data-binary '%s' %s" % (json.dumps(data), event["ResponseURL"]) 
 
 def get_param(event, name, error_msg=None, default=None):
   if name in event['ResourceProperties']:
