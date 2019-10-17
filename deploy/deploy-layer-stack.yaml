@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CodeBuild packaging and deploying to S3
+Parameters: 
+  GithubClone:
+    Description: The HTTPS clone URL to the repository
+    Type: String
+    Default: https://github.com/Geekoosh/postgres-create-database-custom-resource.git
+  LayerName:
+    Description: Base name for lambda layer name
+    Type: String
+    Default: 'postgres-create-database-custom-resource'
+
+Resources:
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:2.0
+        EnvironmentVariables:
+          - Name: PACKAGE_NAME
+            Value: !Ref LayerName
+      Source:
+        Type: GITHUB
+        Location: !Ref GithubClone
+        BuildSpec: !Sub |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                  python: 3.7
+            build:
+              commands:
+                  - pip3 install --upgrade pip
+                  - mkdir ./python
+                  - cp ./index.py ./python/lambda_code.py
+                  - pip3 install -r requirements.txt -t ./python
+                  - zip -r9 ./$PACKAGE_NAME.zip .
+                  - echo "Create lambda layer from $PACKAGE_NAME.zip"
+                  - aws lambda publish-layer-version --layer-name $PACKAGE_NAME --compatible-runtimes python3.6 python3.7 --zip-file file://$(pwd)/$PACKAGE_NAME.zip
+      TimeoutInMinutes: 10
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: ['sts:AssumeRole']
+          Effect: Allow
+          Principal:
+            Service: [codebuild.amazonaws.com]
+        Version: '2012-10-17'
+      Policies:
+        - PolicyName: "CodeBuildPolicy"
+          PolicyDocument :
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - 'logs:*'
+                  - 'lambda:*'
+                Resource: '*'

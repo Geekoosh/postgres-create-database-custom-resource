@@ -32,7 +32,7 @@ def params(event):
   admin_user = get_param(event, 'Admin', 'postgres')
   admin_password = get_param(event, 'Password', 'Admin password is required')
   admin_db = get_param(event, 'AdminDatabase', 'postgres')
-  username = get_param(event, 'Username', admin_user)
+  username = get_param(event, 'Username', default=admin_user)
   database = get_param(event, 'Database', 'Database name is required')
   return instance, admin_user, admin_password, admin_db, username, database  
 

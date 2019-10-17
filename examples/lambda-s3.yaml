@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create database in existing RDS instance
+Parameters:
+  VPC:
+    Type: AWS::EC2::VPC::Id
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+  Username:
+    Type: String
+    Default: postgres
+    NoEcho: true
+  Password:
+    Type: String
+    NoEcho: true
+  AdminDatabase:
+    Type: String
+    Default: postgres
+  DBName:
+    Type: String
+  RDSInstance:
+    Type: String
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+  S3Bucket:
+    Type: String
+  S3Key:
+    Type: String
+
+Resources: 
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version : "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - !Join ['', ['arn:', !Ref 'AWS::Partition', ':iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole']]
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lambda security group to access VPC
+      VpcId: !Ref VPC
+
+  DBSgRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !GetAtt LambdaSecurityGroup.GroupId
+      GroupId: !Ref RDSSecurityGroup
+
+  Lambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref S3Bucket
+        S3Key: !Ref S3Key
+      Description: Create database in existing postgres RDS instance
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.7
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds: !Ref Subnets
+
+  CreateDatabase:
+    Type: Custom::CreateDatabase
+    Properties: 
+      ServiceToken: !GetAtt Lambda.Arn
+      Instance: !Ref RDSInstance
+      Admin: !Ref Username
+      Password: !Ref Password
+      AdminDatabase: !Ref AdminDatabase
+      Database: !Ref DBName

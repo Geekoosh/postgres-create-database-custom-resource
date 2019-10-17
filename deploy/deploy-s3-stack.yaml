@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CodeBuild packaging and deploying to S3
+Parameters: 
+  GithubClone:
+    Description: The HTTPS clone URL to the repository
+    Type: String
+    Default: https://github.com/Geekoosh/postgres-create-database-custom-resource.git
+  Bucket:
+    Description: Optional existing S3 bucket name to deploy lambda packages to
+    Type: String
+    Default: ''
+  PackageName:
+    Description: Base name for function package
+    Type: String
+    Default: 'postgres-create-database-custom-resource'
+
+Conditions: 
+  NotUseBucket: !Equals [!Ref Bucket, '']
+
+Resources:
+  CodeBucket:
+    Condition: NotUseBucket
+    Type: AWS::S3::Bucket
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: S3
+        Location: !If [NotUseBucket, !Ref CodeBucket, !Ref Bucket]
+        Packaging: ZIP
+        Path: !Ref PackageName
+        NamespaceType: BUILD_ID
+        Name: !Join ['.', [!Ref PackageName, 'zip']]
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:2.0
+        EnvironmentVariables:
+          - Name: BUCKET
+            Value: !If [NotUseBucket, !Ref CodeBucket, !Ref Bucket]
+          - Name: PACKAGE_NAME
+            Value: !Ref PackageName
+      Source:
+        Type: GITHUB
+        Location: !Ref GithubClone
+        BuildSpec: !Sub |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                  python: 3.7
+            build:
+              commands:
+                  - pip3 install --upgrade pip 
+                  - pip3 install -r requirements.txt -t .
+                  - zip -r9 ./$PACKAGE_NAME.zip .
+                  - echo "Copy $PACKAGE_NAME.zip -> s3://$BUCKET/$CODEBUILD_BUILD_ID"
+                  - aws s3 cp ./$PACKAGE_NAME.zip s3://$BUCKET/$CODEBUILD_BUILD_ID/$PACKAGE_NAME.zip
+      TimeoutInMinutes: 10
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: ['sts:AssumeRole']
+          Effect: Allow
+          Principal:
+            Service: [codebuild.amazonaws.com]
+        Version: '2012-10-17'
+      Policies:
+        - PolicyName: "S3Policy"
+          PolicyDocument :
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                  - "s3:GetObjectAcl"
+                  - "s3:ListBucket"
+                  - "s3:PutObject"
+                Resource:
+                  - !Sub 
+                    - "arn:aws:s3:::${S3Bucket}"
+                    - {S3Bucket: !If [NotUseBucket, !Ref CodeBucket, !Ref Bucket]}
+                  - !Sub 
+                    - "arn:aws:s3:::${S3Bucket}/*"
+                    - {S3Bucket: !If [NotUseBucket, !Ref CodeBucket, !Ref Bucket]}
+        - PolicyName: "CodeBuildPolicy"
+          PolicyDocument :
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - 'logs:*'
+                Resource: '*'
+        
