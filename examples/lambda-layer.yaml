@@ -40,6 +40,17 @@ Resources:
       Path: "/"
       ManagedPolicyArns:
         - !Join ['', ['arn:', !Ref 'AWS::Partition', ':iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole']]
+      Policies:
+        - PolicyName: "LambdaRDSPolicy"
+          PolicyDocument :
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "rds:DescribeDBInstances"
+                  - "rds:CreateDBSnapshot"
+                  - "rds:DescribeDBSnapshots"
+                Resource: '*'
 
   LambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup

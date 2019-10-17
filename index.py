@@ -51,7 +51,7 @@ def get_instance_endpoint(instance):
   return instance_data['Endpoint']['Address']
 
 def get_admin_db_connection(instance, admin_user, admin_password, admin_db):
-  host = get_instance_data(instance)
+  host = get_instance_endpoint(instance)
   return postgresql.open(
     "pq://%s:%s@%s:5432/%s" % (admin_user, admin_password, host, admin_db)
   )
