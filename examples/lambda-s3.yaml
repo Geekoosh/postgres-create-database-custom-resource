@@ -52,6 +52,12 @@ Resources:
                   - "rds:DescribeDBInstances"
                   - "rds:CreateDBSnapshot"
                   - "rds:DescribeDBSnapshots"
+                  - "lambda:AddPermission"
+                  - "lambda:RemovePermission"
+                  - "events:PutRule"
+                  - "events:DeleteRule"
+                  - "events:PutTargets"
+                  - "events:RemoveTargets"
                 Resource: '*'
 
   LambdaSecurityGroup:

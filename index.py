@@ -18,7 +18,7 @@ def simulateCall(event, success):
   }
   if not success:
     data["Reason"] = "Simulated by user"
-  return "curl -X PUT -H 'Content-Type:' --data-binary '%s' %s" % (json.dumps(data), event["ResponseURL"]) 
+  return "curl -X PUT -H 'Content-Type:' --data-binary '%s' '%s'" % (json.dumps(data), event["ResponseURL"])
 
 def get_param(event, name, error_msg=None, default=None):
   if name in event['ResourceProperties']:
@@ -78,7 +78,7 @@ def is_snapshot_ready(instance, database):
 def database_exists(instance, database, admin_user, admin_password, admin_db):
   db = get_admin_db_connection(instance, admin_user, admin_password, admin_db)
   exists = db.execute("select exists(SELECT datname FROM " \
-    "pg_catalog.pg_database WHERE datname = '%s');" % (database))
+    "pg_catalog.pg_database WHERE datname = '%s');" % (database.lower()))
   db.close()
   return exists
   
