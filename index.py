@@ -80,7 +80,7 @@ def database_exists(instance, database, admin_user, admin_password, admin_db):
   sql = "select exists(SELECT datname FROM " \
     "pg_catalog.pg_database WHERE datname = '%s');" % (database.lower())
   logger.info('Checking if %s exists using: %s' % (database, sql))
-  exists = db.execute(sql)
+  exists = db.query.first(sql)
   logger.info('DB exists result: %s' % (str(exists)))
   db.close()
   return exists
