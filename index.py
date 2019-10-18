@@ -3,6 +3,7 @@ import postgresql
 import logging
 import uuid
 import json
+from datetime import datetime
 from crhelper import CfnResource
 
 logger = logging.getLogger(__name__)
@@ -57,19 +58,21 @@ def get_admin_db_connection(instance, admin_user, admin_password, admin_db):
   )
 
 def snapshot_name(instance, database):
-  return "pre-delete-%s-%s" % (instance, database)
+  now = datetime.now()
+  date_time = now.strftime("%Y-%m-%d-%H-%M")
+  return "pre-delete-%s-%s-%s" % (instance, database, date_time)
 
-def create_snapshot(instance, database):
+def create_snapshot(instance, snapshot):
   client = boto3.client('rds')
   client.create_db_snapshot(
-    DBSnapshotIdentifier=snapshot_name(instance, database),
+    DBSnapshotIdentifier=snapshot,
     DBInstanceIdentifier=instance,
   )
 
-def is_snapshot_ready(instance, database):
+def is_snapshot_ready(snapshot):
   client = boto3.client('rds')
   response = client.describe_db_snapshots(
-    DBSnapshotIdentifier=snapshot_name(instance, database),
+    DBSnapshotIdentifier=snapshot,
   )
   if response is None or len(response['DBSnapshots']) == 0:
     return False
@@ -109,7 +112,9 @@ def delete(event, context):
   try:
     if not database_exists(instance, database, admin_user, admin_password, admin_db):
       return
-    create_snapshot(instance, database)
+    snapshot = snapshot_name(instance, database)
+    create_snapshot(instance, snapshot)
+    helper.Data.update({"snapshot": snapshot})
   except RDSInstanceNotFoundError:
     return
   
@@ -125,8 +130,10 @@ def poll_delete(event, context):
     except RDSInstanceNotFoundError:
       return True 
 
+    snapshot = event['CrHelperData']['snapshot']
+
     # Delete database once snapshot is ready
-    if is_snapshot_ready(instance, database):
+    if is_snapshot_ready(snapshot):
       db = get_admin_db_connection(instance, admin_user, admin_password, admin_db)
       db.execute("DROP DATABASE IF EXISTS %s;" % database)
       db.close()
