@@ -57,7 +57,7 @@ def get_admin_db_connection(instance, admin_user, admin_password, admin_db):
   )
 
 def snapshot_name(instance, database):
-  return "pre_delete_%s_%s" % (instance, database)
+  return "pre-delete-%s-%s" % (instance, database)
 
 def create_snapshot(instance, database):
   client = boto3.client('rds')
