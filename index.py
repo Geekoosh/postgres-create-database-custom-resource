@@ -77,8 +77,11 @@ def is_snapshot_ready(instance, database):
 
 def database_exists(instance, database, admin_user, admin_password, admin_db):
   db = get_admin_db_connection(instance, admin_user, admin_password, admin_db)
-  exists = db.execute("select exists(SELECT datname FROM " \
-    "pg_catalog.pg_database WHERE datname = '%s');" % (database.lower()))
+  sql = "select exists(SELECT datname FROM " \
+    "pg_catalog.pg_database WHERE datname = '%s');" % (database.lower())
+  logger.info('Checking if %s exists using: %s' % (database, sql))
+  exists = db.execute(sql)
+  logger.info('DB exists result: %s' % (str(exists)))
   db.close()
   return exists
   
